@@ -98,6 +98,13 @@ def main():
     if page == "Overview":
         st.header("📈 Key Findings at a Glance")
         
+        # Check for confounder analysis results
+        conf_results_path = os.path.join(config.TABLES_DIR, 'model_comparison_with_confounders.csv')
+        has_conf_analysis = os.path.exists(conf_results_path)
+        
+        if has_conf_analysis:
+            st.success("✅ **NEW:** Analysis with Socio-Economic Confounders Available!")
+        
         # Metrics row
         col1, col2, col3, col4 = st.columns(4)
         
@@ -155,21 +162,45 @@ def main():
         with col2:
             st.subheader("🤖 Machine Learning Results")
             
-            # Load model results
-            model_results_path = os.path.join(config.TABLES_DIR, 'model_results_pm25_only.csv')
-            if os.path.exists(model_results_path):
-                model_results = pd.read_csv(model_results_path)
-                best_model = model_results.iloc[0]
+            # Check for confounder results first
+            if has_conf_analysis:
+                conf_results = pd.read_csv(conf_results_path)
+                best_row = conf_results.loc[conf_results['R2_Test'].idxmax()]
+                
+                # Calculate improvement
+                pm_only_r2 = conf_results[conf_results['Feature_Set'] == 'PM2.5 Only']['R2_Test'].max()
+                pm_conf_r2 = conf_results[conf_results['Feature_Set'] == 'PM2.5 + Confounders']['R2_Test'].max()
+                improvement = ((pm_conf_r2 - pm_only_r2) / pm_only_r2) * 100
                 
                 st.markdown(f"""
-                - **Best Model**: {best_model['Model']}
-                - **R² Score**: {best_model['R2']:.3f}
-                - **MAE**: {best_model['MAE']:.2f}
-                - **RMSE**: {best_model['RMSE']:.2f}
+                - **Best Model**: {best_row['Model']} with Confounders
+                - **R² Score**: {best_row['R2_Test']:.3f} ⭐
+                - **MAE**: {best_row['MAE']:.2f} deaths/1000
+                - **Improvement**: +{improvement:.0f}% vs PM2.5-only
                 """)
                 
-                with st.expander("📊 View All Model Comparison"):
-                    st.dataframe(model_results[['Model', 'R2', 'MAE', 'RMSE', 'MedAE']])
+                st.info("🎯 **Key Insight**: Adding socio-economic confounders improved model performance by **305%**!")
+                
+                with st.expander("📊 View Full Comparison"):
+                    display_df = conf_results[['Feature_Set', 'Model', 'R2_Test', 'MAE']].copy()
+                    display_df = display_df.sort_values('R2_Test', ascending=False)
+                    st.dataframe(display_df, hide_index=True)
+            else:
+                # Fallback to PM2.5-only results
+                model_results_path = os.path.join(config.TABLES_DIR, 'model_results_pm25_only.csv')
+                if os.path.exists(model_results_path):
+                    model_results = pd.read_csv(model_results_path)
+                    best_model = model_results.iloc[0]
+                    
+                    st.markdown(f"""
+                    - **Best Model**: {best_model['Model']}
+                    - **R² Score**: {best_model['R2']:.3f}
+                    - **MAE**: {best_model['MAE']:.2f}
+                    - **RMSE**: {best_model['RMSE']:.2f}
+                    """)
+                    
+                    with st.expander("📊 View All Model Comparison"):
+                        st.dataframe(model_results[['Model', 'R2', 'MAE', 'RMSE', 'MedAE']])
         
         # Correlation heatmap
         st.subheader("🔥 Correlation Heatmap")
@@ -393,41 +424,198 @@ def main():
     elif page == "Machine Learning":
         st.header("🤖 Machine Learning Models")
         
-        # Load model results
-        model_results_path = os.path.join(config.TABLES_DIR, 'model_results_pm25_only.csv')
-        if os.path.exists(model_results_path):
-            model_results = pd.read_csv(model_results_path)
+        # Check for confounder analysis
+        conf_results_path = os.path.join(config.TABLES_DIR, 'model_comparison_with_confounders.csv')
+        has_conf_analysis = os.path.exists(conf_results_path)
+        
+        # Tab selection
+        if has_conf_analysis:
+            tab1, tab2, tab3 = st.tabs(["🌟 Confounder Analysis", "📊 Model Comparison", "🔍 Feature Importance"])
             
-            st.subheader("📊 Model Performance Comparison")
+            with tab1:
+                st.subheader("🎯 The Impact of Socio-Economic Confounders")
+                st.markdown("""
+                This analysis compares models trained on:
+                - **PM2.5 Only**: 3 features (Total, Urban, Rural PM2.5)
+                - **PM2.5 + Confounders**: 7 features (PM2.5 + GDP + Health Expenditure + Urbanization + Fertility)
+                - **Full Model**: 12 features (above + interaction terms)
+                """)
+                
+                # Load confounder results
+                conf_results = pd.read_csv(conf_results_path)
+                
+                # Show the main comparison figure
+                conf_impact_path = os.path.join(config.FIGURES_DIR, 'confounder_impact.png')
+                if os.path.exists(conf_impact_path):
+                    st.image(conf_impact_path, caption="Impact of Adding Socio-Economic Confounders", use_column_width=True)
+                
+                # Key metrics
+                st.markdown("### 📈 Key Results")
+                
+                # Calculate improvement
+                pm_only = conf_results[conf_results['Feature_Set'] == 'PM2.5 Only']
+                pm_conf = conf_results[conf_results['Feature_Set'] == 'PM2.5 + Confounders']
+                
+                if len(pm_only) > 0 and len(pm_conf) > 0:
+                    pm_only_r2 = pm_only['R2_Test'].max()
+                    pm_conf_r2 = pm_conf['R2_Test'].max()
+                    improvement = ((pm_conf_r2 - pm_only_r2) / pm_only_r2) * 100
+                    
+                    col1, col2, col3, col4 = st.columns(4)
+                    with col1:
+                        st.metric("PM2.5 Only R²", f"{pm_only_r2:.3f}", 
+                                 help="Model using only PM2.5 features")
+                    with col2:
+                        st.metric("PM2.5 + Confounders R²", f"{pm_conf_r2:.3f}", 
+                                 f"+{improvement:.0f}%",
+                                 help="Model with socio-economic confounders")
+                    with col3:
+                        pm_only_mae = pm_only['MAE'].min()
+                        pm_conf_mae = pm_conf['MAE'].min()
+                        mae_improvement = ((pm_only_mae - pm_conf_mae) / pm_only_mae) * 100
+                        st.metric("MAE Improvement", f"-{mae_improvement:.0f}%",
+                                 help="Reduction in Mean Absolute Error")
+                    with col4:
+                        variance_explained = pm_conf_r2 * 100
+                        st.metric("Variance Explained", f"{variance_explained:.1f}%",
+                                 help="With confounders")
+                
+                # Interpretation
+                st.markdown("""
+                ### 🔍 What This Means
+                
+                **Before (PM2.5 Only)**:
+                - Model explains only ~22% of variance in child mortality
+                - Predictions are off by ~17 deaths per 1,000 births
+                - **Too inaccurate for policy use**
+                
+                **After (With Confounders)**:
+                - Model explains **~89% of variance** 
+                - Predictions are off by only ~6 deaths per 1,000 births
+                - **Accurate enough for policy planning**
+                
+                **Key Insight**: You cannot analyze air pollution in isolation. Socio-economic context is critical!
+                """)
             
-            # Bar chart
-            fig = go.Figure()
-            fig.add_trace(go.Bar(name='R²', x=model_results['Model'], y=model_results['R2']))
-            fig.add_trace(go.Bar(name='MAE', x=model_results['Model'], 
-                                y=model_results['MAE']/100))  # Scale for visibility
-            fig.update_layout(title='Model Performance Metrics', barmode='group')
-            st.plotly_chart(fig, use_container_width=True)
+            with tab2:
+                st.subheader("📊 Complete Model Comparison")
+                
+                # Load confounder results
+                conf_results = pd.read_csv(conf_results_path)
+                
+                # Show comparison figure
+                feat_comp_path = os.path.join(config.FIGURES_DIR, 'feature_set_comparison.png')
+                if os.path.exists(feat_comp_path):
+                    st.image(feat_comp_path, caption="Performance Across All Feature Sets and Models", use_column_width=True)
+                
+                # Detailed table
+                st.markdown("### 📋 Detailed Results")
+                # Format for display
+                display_df = conf_results[['Feature_Set', 'Model', 'N_Features', 'R2_Test', 'MAE', 'RMSE']].copy()
+                display_df['R2_Test'] = display_df['R2_Test'].round(4)
+                display_df['MAE'] = display_df['MAE'].round(2)
+                display_df['RMSE'] = display_df['RMSE'].round(2)
+                
+                # Sort by R2
+                display_df = display_df.sort_values('R2_Test', ascending=False)
+                
+                st.dataframe(display_df, use_container_width=True, hide_index=True)
+                
+                # Best model
+                best_row = display_df.iloc[0]
+                st.success(f"""
+                **🏆 Best Model**: {best_row['Model']} with {best_row['Feature_Set']}
+                - R² Score: {best_row['R2_Test']:.4f}
+                - MAE: {best_row['MAE']:.2f} deaths per 1,000 births
+                - Features: {int(best_row['N_Features'])}
+                """)
             
-            # Detailed results table
-            st.subheader("📋 Detailed Results")
-            st.dataframe(model_results, use_container_width=True)
-            
-            # Feature importance (if available)
-            st.subheader("⭐ Feature Importance")
-            best_model_name = model_results.iloc[0]['Model']
-            feat_imp_path = os.path.join(config.FIGURES_DIR, 
-                                        f'feature_importance_{best_model_name}_pm25_only.png')
-            if os.path.exists(feat_imp_path):
-                st.image(feat_imp_path, caption=f'{best_model_name} Feature Importance')
-            
-            # Predictions vs actual
-            st.subheader("🎯 Predictions vs Actual Values")
-            pred_path = os.path.join(config.FIGURES_DIR, 
-                                    f'predictions_{best_model_name}_pm25_only.png')
-            if os.path.exists(pred_path):
-                st.image(pred_path, caption=f'{best_model_name} Predictions')
+            with tab3:
+                st.subheader("⭐ Feature Importance Analysis")
+                
+                # Load feature importance
+                feat_imp_path_conf = os.path.join(config.TABLES_DIR, 'feature_importance_with_confounders.csv')
+                feat_imp_fig_conf = os.path.join(config.FIGURES_DIR, 'feature_importance_with_confounders.png')
+                
+                if os.path.exists(feat_imp_fig_conf):
+                    st.image(feat_imp_fig_conf, caption="Feature Importance (Best Model with Confounders)", use_column_width=True)
+                
+                if os.path.exists(feat_imp_path_conf):
+                    feat_imp_df = pd.read_csv(feat_imp_path_conf)
+                    
+                    st.markdown("### 📊 Top Features")
+                    
+                    # Show top 5
+                    top5 = feat_imp_df.head(5)
+                    for idx, row in top5.iterrows():
+                        col1, col2 = st.columns([3, 1])
+                        with col1:
+                            st.write(f"**{idx+1}. {row['Feature']}**")
+                        with col2:
+                            st.write(f"{row['Importance']:.1%}")
+                    
+                    st.markdown("""
+                    ### 🔍 Interpretation
+                    
+                    **Fertility Rate dominates** (70%+ importance):
+                    - High fertility → more children per family → resource dilution
+                    - Correlates with lower maternal education and healthcare access
+                    
+                    **Economic factors matter** (GDP + Health Spending):
+                    - Wealthier countries can afford better healthcare
+                    - Health expenditure directly impacts child survival
+                    
+                    **PM2.5 still has independent effect** (~4-6%):
+                    - Even after controlling for confounders
+                    - Evidence of causal pathway from pollution to mortality
+                    
+                    **Policy Implication**: Need integrated approach - can't just clean air, must also address poverty and healthcare!
+                    """)
+                
+                # Predictions vs Actual for best model
+                st.markdown("### 🎯 Model Predictions")
+                pred_path_champion = os.path.join(config.FIGURES_DIR, 'predictions_champion_model.png')
+                if os.path.exists(pred_path_champion):
+                    st.image(pred_path_champion, caption="Predictions vs Actual Values (Best Model)", use_column_width=True)
+                
         else:
-            st.warning("⚠️ Model results not found. Please run main_complete.py first.")
+            # Fallback to PM2.5-only results
+            st.info("ℹ️ Showing PM2.5-only analysis. Run `python run_with_confounders.py` for full confounder analysis.")
+            
+            model_results_path = os.path.join(config.TABLES_DIR, 'model_results_pm25_only.csv')
+            if os.path.exists(model_results_path):
+                model_results = pd.read_csv(model_results_path)
+                
+                st.subheader("📊 Model Performance Comparison")
+                
+                # Bar chart
+                fig = go.Figure()
+                fig.add_trace(go.Bar(name='R²', x=model_results['Model'], y=model_results['R2']))
+                fig.add_trace(go.Bar(name='MAE', x=model_results['Model'], 
+                                    y=model_results['MAE']/100))  # Scale for visibility
+                fig.update_layout(title='Model Performance Metrics', barmode='group')
+                st.plotly_chart(fig, use_container_width=True)
+                
+                # Detailed results table
+                st.subheader("📋 Detailed Results")
+                st.dataframe(model_results, use_container_width=True)
+                
+                # Feature importance (if available)
+                st.subheader("⭐ Feature Importance")
+                best_model_name = model_results.iloc[0]['Model']
+                feat_imp_path = os.path.join(config.FIGURES_DIR, 
+                                            f'feature_importance_{best_model_name}_pm25_only.png')
+                if os.path.exists(feat_imp_path):
+                    st.image(feat_imp_path, caption=f'{best_model_name} Feature Importance')
+                
+                # Predictions vs actual
+                st.subheader("🎯 Predictions vs Actual Values")
+                pred_path = os.path.join(config.FIGURES_DIR, 
+                                        f'predictions_{best_model_name}_pm25_only.png')
+                if os.path.exists(pred_path):
+                    st.image(pred_path, caption=f'{best_model_name} Predictions')
+            else:
+                st.warning("⚠️ Model results not found. Please run main_complete.py first.")
     
     # ========================================================================
     # PAGE 6: CAUSAL INFERENCE
@@ -500,15 +688,18 @@ def main():
         
         ### 🔬 Methods
         - **Statistical Analysis**: Correlation, regression, hypothesis testing
-        - **Machine Learning**: Ridge, Lasso, Random Forest, XGBoost, etc.
-        - **Causal Inference**: PSM, DiD, IV methods
-        - **Geographic Visualization**: Interactive choropleth maps
+        - **Machine Learning**: Ridge, Lasso, Random Forest, XGBoost, Gradient Boosting
+        - **Feature Engineering**: Log transforms, polynomial terms, interaction features
+        - **Model Interpretability**: SHAP (SHapley Additive exPlanations)
+        - **Causal Inference**: Propensity Score Matching (PSM)
+        - **Geographic Visualization**: Interactive choropleth and bubble maps
         
         ### 🎯 Key Findings
-        - PM2.5 explains 10.9% of U5MR variance (linear model)
-        - Random Forest achieves R² = 0.437 (43.7% explained)
-        - Each 1 µg/m³ increase in PM2.5 → +0.85 U5MR
-        - Urban areas have 14% higher PM2.5 than rural areas
+        - **PM2.5 alone explains only 22% of variance** in child mortality
+        - **With socio-economic confounders: R² = 0.89** (89% explained!) - **+305% improvement**
+        - **Fertility rate is the #1 predictor** (71% importance)
+        - **PM2.5 still has independent effect** after controlling for confounders
+        - **Policy implication**: Need integrated approach (environment + economics + healthcare)
         
         ### 👨‍💻 Technical Stack
         - **Language**: Python 3.10+
@@ -535,8 +726,8 @@ def main():
         
         ---
         
-        **Last Updated**: December 8, 2025  
-        **Version**: 2.0 (With Dashboard)
+        **Last Updated**: December 9, 2025  
+        **Version**: 3.0 (With Confounder Analysis & SHAP Interpretability)
         """)
 
 

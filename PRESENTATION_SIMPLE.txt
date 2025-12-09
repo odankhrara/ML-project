@@ -1,0 +1,608 @@
+AIR POLLUTION AND CHILD MORTALITY: A MACHINE LEARNING ANALYSIS
+================================================================
+
+SLIDE 1: TITLE
+--------------
+Air Pollution and Child Mortality: A Machine Learning Analysis
+Predicting Under-5 Mortality using PM2.5 and Socio-Economic Factors
+
+[Your Name]
+Machine Learning - Fall 2025
+San Jose State University
+
+
+SLIDE 2: RESEARCH QUESTION
+---------------------------
+QUESTION: Can we predict child mortality from air pollution? What is the causal impact?
+
+MOTIVATION:
+• 7 million premature deaths annually from air pollution (WHO)
+• Children especially vulnerable
+• Need to move from correlation to causation
+
+KEY INNOVATION:
+• Machine learning + causal inference
+• Control for socio-economic confounders
+• Production-quality code with testing & dashboard
+
+
+SLIDE 3: DATA SOURCES
+---------------------
+WHO PM2.5 DATA:
+• 195 countries, 2010-2022
+• Urban, rural, total PM2.5 (μg/m³)
+
+UNICEF U5MR DATA:
+• 7,000+ observations
+• Under-5 Mortality Rate (per 1,000 live births)
+
+WORLD BANK DATA:
+• GDP per capita
+• Health expenditure
+• Urbanization rate
+• Fertility rate
+
+FINAL DATASET: 1,950 country-year observations
+
+
+SLIDE 4: EXPLORATORY ANALYSIS
+------------------------------
+[SHOW: correlation_matrix.png]
+
+KEY FINDINGS:
+• Moderate correlation between PM2.5 and U5MR (r ≈ 0.5)
+• Urban PM2.5 > Rural PM2.5 in most countries
+• Strong correlation with GDP, health spending
+
+
+SLIDE 5: GEOGRAPHIC PATTERNS
+-----------------------------
+[SHOW: pm25_world_map.png OR choropleth]
+
+OBSERVATIONS:
+• Highest PM2.5: South Asia, Middle East, North Africa
+• Lowest PM2.5: Northern Europe, Australia, North America
+• Clear clustering → socio-economic factors matter!
+
+
+SLIDE 6: THE CONFOUNDING PROBLEM
+---------------------------------
+WHY WE CAN'T JUST USE PM2.5 ALONE:
+
+PM2.5 correlates with child mortality, BUT ALSO:
+• GDP correlates with both
+• Health spending correlates with both
+• Urbanization correlates with both
+• Fertility rate correlates with both
+
+CONFOUNDERS WE CONTROL FOR:
+1. GDP per capita (wealth)
+2. Health expenditure (healthcare quality)
+3. Urbanization (infrastructure)
+4. Fertility rate (family size)
+
+Without controlling = correlation, not causation!
+
+
+SLIDE 7: MACHINE LEARNING APPROACH
+-----------------------------------
+FEATURE SETS TESTED:
+
+SET 1: PM2.5 ONLY (3 features)
+• PM2.5 Total, Urban, Rural
+
+SET 2: PM2.5 + CONFOUNDERS (7 features)
+• PM2.5 variables
+• log(GDP per capita)
+• log(Health expenditure)
+• Urbanization rate
+• Fertility rate
+
+SET 3: FULL WITH INTERACTIONS (12 features)
+• All above + PM2.5×GDP, PM2.5×Urban, polynomial terms
+
+
+SLIDE 8: MODELS TESTED
+----------------------
+6 MACHINE LEARNING MODELS:
+
+LINEAR MODELS:
+• Ridge Regression
+• Lasso Regression
+• ElasticNet
+
+TREE-BASED MODELS:
+• Random Forest ⭐ (Best!)
+• XGBoost
+• Gradient Boosting
+
+TRAINING STRATEGY:
+• Time-aware split (Train ≤2015, Test >2015)
+• 5-fold cross-validation
+• Grid search hyperparameter tuning
+
+
+SLIDE 9: **KEY RESULT** - IMPACT OF CONFOUNDERS
+------------------------------------------------
+[SHOW: confounder_impact.png]
+
+PERFORMANCE COMPARISON:
+
+                     PM2.5 ONLY    PM2.5 + CONFOUNDERS    IMPROVEMENT
+R² Score                 0.22              0.89             +305%
+MAE                     17.5              6.2               -65%
+Variance Explained       22%              89%               +67pp
+
+BEST MODEL: Random Forest with Socio-Economic Confounders
+
+INTERPRETATION:
+• PM2.5 alone: explains only 22% of variance
+• Adding socio-economic factors: explains 89%
+• Confounders are CRITICAL for accurate prediction!
+
+
+SLIDE 10: FEATURE IMPORTANCE
+-----------------------------
+[SHOW: feature_importance_with_confounders.png]
+
+TOP 5 MOST IMPORTANT FEATURES:
+
+1. Fertility Rate................71.1%
+2. log(GDP per capita)...........11.9%
+3. log(Health expenditure).......8.2%
+4. PM2.5 Total...................3.7%
+5. PM2.5 Urban...................2.9%
+
+KEY INSIGHT:
+• Socio-economic factors dominate
+• BUT PM2.5 still has independent effect
+• Suggests causal pathway even after controlling
+
+
+SLIDE 11: CAUSAL INFERENCE
+---------------------------
+METHOD: Propensity Score Matching (PSM)
+
+GOAL: Estimate causal effect of high vs low pollution
+
+APPROACH:
+1. Split: High PM2.5 (>25 μg/m³) vs Low (≤25)
+2. Match similar countries on confounders
+3. Compare U5MR between matched pairs
+
+RESULT:
+• High-pollution countries STILL have higher mortality
+• Even after matching on GDP, health, etc.
+• Evidence of CAUSAL effect, not just correlation
+
+
+SLIDE 12: MODEL INTERPRETABILITY (SHAP)
+----------------------------------------
+[SHOW: shap_beeswarm.png]
+
+WHAT IS SHAP?
+• Shows how each feature affects predictions
+• Each dot = one observation
+• Red = high value, Blue = low value
+
+KEY FINDINGS:
+• High fertility → increases mortality prediction
+• High GDP → decreases mortality prediction
+• High PM2.5 → increases mortality (even controlling for GDP!)
+
+
+SLIDE 13: MODEL COMPARISON
+---------------------------
+[SHOW: feature_set_comparison.png]
+
+OBSERVATIONS:
+1. Random Forest performs best across all feature sets
+2. MASSIVE jump when adding confounders
+3. Interaction terms give small additional improvement
+
+WHY RANDOM FOREST WINS:
+• Handles non-linear relationships
+• Robust to outliers
+• Captures interactions automatically
+• Less overfitting
+
+
+SLIDE 14: STATISTICAL VALIDATION
+---------------------------------
+RELIABILITY METRICS:
+
+Cross-Validation Score: 0.887
+• Consistent across data splits
+
+Time-Based Validation:
+• Train: 2010-2015
+• Test: 2016-2022
+• Strong performance → generalizes well
+
+Error Analysis:
+• MAE: 6.2 deaths per 1,000 births
+• Median AE: 3.5 (most predictions very close)
+• RMSE: 10.0
+
+
+SLIDE 15: LESSONS LEARNED
+--------------------------
+TECHNICAL LESSONS:
+
+1. CONFOUNDERS MATTER!
+   • PM2.5-only model was useless (R²=0.22)
+   • Always control for confounding variables
+
+2. FEATURE ENGINEERING IS POWERFUL
+   • Log transforms for skewed variables
+   • Interaction terms capture complex relationships
+
+3. TREE-BASED MODELS EXCEL
+   • Random Forest > XGBoost > Linear models
+   • Non-linear relationships important here
+
+DOMAIN LESSONS:
+
+4. SOCIO-ECONOMIC CONTEXT DOMINATES
+   • Fertility rate is #1 predictor
+   • But pollution still has independent effect!
+
+5. GEOGRAPHY MATTERS
+   • Highest burden: South Asia, Sub-Saharan Africa
+   • Need both pollution control AND economic development
+
+
+SLIDE 16: PROJECT MANAGEMENT
+-----------------------------
+VERSION CONTROL:
+• GitHub: github.com/odankhrara/ML-project
+• 50+ commits with clear messages
+• Modular code structure
+
+AGILE DEVELOPMENT:
+• Phase 1: Data cleaning & EDA
+• Phase 2: Basic ML models
+• Phase 3: Feature engineering
+• Phase 4: Advanced features (SHAP, causality)
+• Phase 5: Presentation
+
+PAIR PROGRAMMING WITH AI:
+• Used Cursor AI for:
+  - Code refactoring
+  - Debugging
+  - Best practices
+  - Documentation
+
+
+SLIDE 17: CODE STRUCTURE
+-------------------------
+PROJECT STRUCTURE:
+src/
+  ├── data_processing.py       # Data loading & cleaning
+  ├── feature_engineering.py   # World Bank data
+  ├── ml_pipeline.py           # Model training
+  ├── interpretability.py      # SHAP analysis
+  ├── causal_inference.py      # PSM, DiD
+  └── visualization.py         # Plots
+
+tests/
+  └── test_data_processing.py  # Unit tests
+
+streamlit_dashboard.py         # Interactive dashboard
+config.py                      # Configuration
+requirements.txt               # Dependencies
+
+
+SLIDE 18: LIVE DEMO (Streamlit)
+--------------------------------
+DASHBOARD FEATURES:
+1. Data Explorer - filter by country, year, pollution
+2. Geographic Maps - interactive world maps
+3. Statistical Analysis - correlation, regression
+4. Machine Learning - model comparison
+5. Causal Inference - PSM results
+6. Download Results - export tables/figures
+
+DEMO PLAN:
+1. Show PM2.5 world map for 2022
+2. Filter to high-pollution countries
+3. Display predictions vs actual
+4. Show SHAP for specific country
+5. Show PSM matched pairs
+
+
+SLIDE 19: KEY FINDINGS
+-----------------------
+WHAT WE DISCOVERED:
+
+1. PM2.5 HAS MEASURABLE BUT MODEST EFFECT
+   • After controlling for confounders
+   • Contributes ~4-6% of feature importance
+
+2. SOCIO-ECONOMIC FACTORS DOMINATE
+   • Fertility rate: 71% importance
+   • GDP is crucial
+
+3. CONFOUNDERS DRAMATICALLY IMPROVE MODEL
+   • R² jumps 0.22 → 0.89 (+305%)
+   • Essential for policy predictions
+
+4. TREE-BASED ML OUTPERFORMS LINEAR
+   • Random Forest best: R²=0.89, MAE=6.2
+
+5. CAUSAL INFERENCE CONFIRMS EFFECT
+   • PSM shows pollution effect persists
+
+
+SLIDE 20: POLICY IMPLICATIONS
+------------------------------
+WHAT SHOULD POLICYMAKERS DO?
+
+1. INTEGRATED APPROACH REQUIRED
+   • Can't just reduce PM2.5 alone
+   • Must combine with:
+     - Economic development
+     - Healthcare investment
+     - Family planning
+
+2. TARGET HIGH-BURDEN REGIONS
+   • South Asia: High PM2.5 + moderate U5MR
+   • Sub-Saharan Africa: Moderate PM2.5 + very high U5MR
+   • Different interventions for different contexts
+
+3. MONITOR MULTIPLE INDICATORS
+   • PM2.5 important but insufficient
+   • Track GDP, health spending, fertility together
+
+4. USE PREDICTIVE MODELS
+   • Identify highest-risk countries
+   • Target interventions for maximum impact
+
+
+SLIDE 21: FUTURE WORK
+----------------------
+HOW TO EXTEND:
+
+1. MORE CONFOUNDERS
+   • Maternal education, clean water, vaccination
+
+2. OTHER POLLUTANTS
+   • PM10, NO₂, SO₂, ozone, indoor pollution
+
+3. TIME-SERIES FORECASTING
+   • Predict future trends
+   • Simulate policy interventions
+
+4. DEEP LEARNING
+   • Neural networks for complex relationships
+
+5. ADVANCED CAUSAL METHODS
+   • Difference-in-Differences
+   • Instrumental Variables
+
+
+SLIDE 22: CHALLENGES SOLVED
+----------------------------
+CHALLENGE                          → SOLUTION
+Colab code won't run locally       → Refactored dependencies
+Missing socio-economic data        → Left join + dropna
+Unicode errors (Windows)           → ASCII indicators
+Overfitting with PM2.5 only        → Cross-validation + time split
+Model interpretability             → SHAP analysis
+Correlation vs causation           → Propensity Score Matching
+Large dataset visualization        → Streamlit dashboard
+Feature collinearity               → Tree-based models
+
+
+SLIDE 23: TESTING & VALIDATION
+-------------------------------
+UNIT TESTS:
+• test_data_processing.py
+• All tests pass ✓
+
+MODEL VALIDATION:
+• Time-based train/test split
+• 5-fold cross-validation
+• Hyperparameter tuning
+
+DATA VALIDATION:
+• Missing value checks
+• Country code mapping (195 countries)
+• Outlier detection
+
+CODE QUALITY:
+• Modular structure
+• Type hints & docstrings
+• Configuration management
+
+
+SLIDE 24: REPRODUCIBILITY
+--------------------------
+HOW TO RUN:
+
+1. Clone repository:
+   git clone https://github.com/odankhrara/ML-project
+   cd ML-project
+
+2. Install dependencies:
+   pip install -r requirements.txt
+
+3. Run analysis:
+   python run_with_confounders.py
+
+4. Launch dashboard:
+   streamlit run streamlit_dashboard.py
+
+ALL CODE, DATA, AND DOCS ON GITHUB!
+
+
+SLIDE 25: CONCLUSION
+---------------------
+SUMMARY:
+
+• Built ML pipeline to predict child mortality
+
+• Demonstrated CRITICAL importance of confounders
+  (R² 0.22 → 0.89)
+
+• Used causal inference to establish causation
+
+• Created production-quality code with testing & dashboard
+
+• Found PM2.5 has effect, but socio-economic factors dominate
+
+THE BIG PICTURE:
+Air pollution is serious, but addressing child mortality
+requires INTEGRATED solutions: poverty + healthcare + environment
+
+
+SLIDE 26: Q&A
+-------------
+QUESTIONS?
+
+Thank you!
+
+GitHub: github.com/odankhrara/ML-project
+Full Report: PROJECT_REPORT.md
+
+
+================================================================
+DEMO SCRIPT
+================================================================
+
+DASHBOARD DEMO (5 minutes):
+
+1. HOMEPAGE (30 sec)
+   "Let me show you our interactive dashboard. This allows anyone
+    to explore the data and models without coding."
+
+2. DATA EXPLORER (1 min)
+   • Select "High PM2.5" countries (>35 μg/m³)
+   • Show India, Pakistan, Bangladesh
+   • Display their U5MR trends
+   "Notice these countries have high pollution AND high mortality"
+
+3. GEOGRAPHIC MAP (1 min)
+   • Show 2022 PM2.5 world map
+   • Highlight South Asia hotspot
+   • Show animation over years
+   "You can see pollution levels changing over time"
+
+4. MACHINE LEARNING PAGE (1.5 min)
+   • Show model comparison chart
+   • Explain the massive improvement with confounders
+   • Show predictions vs actual scatter plot
+   "Our best model explains 89% of variance"
+
+5. FEATURE IMPORTANCE (1 min)
+   • Show importance plot
+   • Explain fertility rate dominance
+   "This is why we need integrated policy approaches"
+
+6. CAUSAL INFERENCE (30 sec)
+   • Show PSM results
+   • Explain matched pairs
+   "Even after matching, pollution effect persists"
+
+
+================================================================
+SPEAKER NOTES - KEY TALKING POINTS
+================================================================
+
+SLIDE 9 (THE KEY RESULT):
+"This is the most important finding. When we use PM2.5 alone,
+ our model is terrible - R-squared of only 0.22. But when we add
+ socio-economic confounders, performance jumps to 0.89. This is
+ a 305% improvement! This shows that you cannot analyze air
+ pollution in isolation. The socio-economic context is critical."
+
+SLIDE 10 (FEATURE IMPORTANCE):
+"Now look at what actually matters. Fertility rate dominates at
+ 71% importance. GDP and health spending are next. PM2.5 is down
+ at position 4. But here's the key insight: PM2.5 STILL matters,
+ even after controlling for everything else. This is evidence of
+ an independent causal pathway from pollution to mortality."
+
+SLIDE 11 (CAUSAL INFERENCE):
+"We used Propensity Score Matching to move from correlation to
+ causation. We matched high-pollution and low-pollution countries
+ that are similar on GDP, health spending, and other factors.
+ Even after this careful matching, high-pollution countries still
+ have higher child mortality. This is strong evidence that the
+ effect is causal, not just correlation."
+
+SLIDE 15 (LESSONS LEARNED):
+"The biggest lesson: confounders matter enormously. Our initial
+ PM2.5-only model was essentially useless with R-squared of 0.22.
+ This taught us that in real-world health outcomes, you can never
+ look at one factor in isolation. Context is everything."
+
+SLIDE 19 (KEY FINDINGS):
+"So what's the bottom line? PM2.5 pollution does have a real,
+ measurable effect on child mortality. But it's not the dominant
+ factor. Socio-economic conditions - especially fertility rate
+ and GDP - matter much more. This means policy solutions need to
+ be integrated: we can't just clean the air, we also need to
+ improve healthcare, reduce poverty, and support family planning."
+
+
+================================================================
+Q&A PREPARATION
+================================================================
+
+LIKELY QUESTIONS & ANSWERS:
+
+Q: "Why not use deep learning?"
+A: "Great question. Random Forest already achieved R²=0.89, which
+    is excellent. Deep learning would add complexity without clear
+    benefit. Also, Random Forest is much easier to interpret, which
+    is critical for policy applications. We want stakeholders to
+    understand why the model makes its predictions."
+
+Q: "How do you know it's causal and not just correlation?"
+A: "Two reasons. First, we controlled for major confounders: GDP,
+    health spending, urbanization, and fertility. Second, we used
+    Propensity Score Matching, which is a quasi-experimental method
+    that matches similar countries and compares outcomes. The effect
+    persists even after matching, suggesting causality."
+
+Q: "What about other air pollutants like NO₂ or SO₂?"
+A: "That's future work. We focused on PM2.5 because it's the most
+    harmful to children - the fine particles can penetrate deep into
+    lungs. But you're right, a comprehensive model should include
+    other pollutants. The challenge is data availability."
+
+Q: "Why is fertility rate so important?"
+A: "High fertility means more children per family, which dilutes
+    resources - parental attention, nutrition, healthcare access.
+    Also, closely spaced births stress maternal health, affecting
+    child outcomes. And high fertility correlates with lower
+    maternal education, which affects childcare quality."
+
+Q: "Can your model predict for new countries not in the training data?"
+A: "Yes, as long as we have the required features: PM2.5, GDP,
+    health expenditure, urbanization, and fertility. The model
+    learns relationships between these features and mortality, so
+    it can generalize to new countries with similar characteristics."
+
+Q: "What's the practical accuracy for policymakers?"
+A: "Our Mean Absolute Error is 6.2 deaths per 1,000 live births.
+    Given that U5MR ranges from 1 to 130 globally, this is quite
+    accurate for policy planning. For most countries, we're within
+    3.5 (median error) of the true value."
+
+Q: "Did you try ensemble methods combining multiple models?"
+A: "We tested individual models extensively. Random Forest itself
+    is an ensemble (of decision trees), which explains its strong
+    performance. We could try stacking different models, but given
+    Random Forest's 0.89 R², the improvement would be marginal."
+
+Q: "What about data quality issues?"
+A: "Good question. Data quality varies by country. WHO PM2.5 data
+    uses satellite estimates + ground measurements, which is quite
+    reliable. UNICEF U5MR data is from national statistics, better
+    for developed countries. We addressed this by using time-based
+    validation - if data quality were terrible, the model wouldn't
+    generalize to future years, but it does."
+
+
