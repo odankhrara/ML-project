@@ -447,7 +447,7 @@ def main():
                 # Show the main comparison figure
                 conf_impact_path = os.path.join(config.FIGURES_DIR, 'confounder_impact.png')
                 if os.path.exists(conf_impact_path):
-                    st.image(conf_impact_path, caption="Impact of Adding Socio-Economic Confounders", use_column_width=True)
+                    st.image(conf_impact_path, caption="Impact of Adding Socio-Economic Confounders", use_container_width=True)
                 
                 # Key metrics
                 st.markdown("### 📈 Key Results")
@@ -506,7 +506,7 @@ def main():
                 # Show comparison figure
                 feat_comp_path = os.path.join(config.FIGURES_DIR, 'feature_set_comparison.png')
                 if os.path.exists(feat_comp_path):
-                    st.image(feat_comp_path, caption="Performance Across All Feature Sets and Models", use_column_width=True)
+                    st.image(feat_comp_path, caption="Performance Across All Feature Sets and Models", use_container_width=True)
                 
                 # Detailed table
                 st.markdown("### 📋 Detailed Results")
@@ -538,7 +538,7 @@ def main():
                 feat_imp_fig_conf = os.path.join(config.FIGURES_DIR, 'feature_importance_with_confounders.png')
                 
                 if os.path.exists(feat_imp_fig_conf):
-                    st.image(feat_imp_fig_conf, caption="Feature Importance (Best Model with Confounders)", use_column_width=True)
+                    st.image(feat_imp_fig_conf, caption="Feature Importance (Best Model with Confounders)", use_container_width=True)
                 
                 if os.path.exists(feat_imp_path_conf):
                     feat_imp_df = pd.read_csv(feat_imp_path_conf)
@@ -576,7 +576,7 @@ def main():
                 st.markdown("### 🎯 Model Predictions")
                 pred_path_champion = os.path.join(config.FIGURES_DIR, 'predictions_champion_model.png')
                 if os.path.exists(pred_path_champion):
-                    st.image(pred_path_champion, caption="Predictions vs Actual Values (Best Model)", use_column_width=True)
+                    st.image(pred_path_champion, caption="Predictions vs Actual Values (Best Model)", use_container_width=True)
                 
         else:
             # Fallback to PM2.5-only results
